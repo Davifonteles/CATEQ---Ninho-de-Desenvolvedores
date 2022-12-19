@@ -1,0 +1,88 @@
+AULA 6
+
+#1
+def string_length(str1):
+    count = 0
+    for char in str1:
+        count += 1
+    return count
+print(string_length('davi'))
+
+#2
+minha_lista = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+soma_da_lista = sum(minha_lista)
+print(f"soma da lista = {soma_da_lista}")
+
+#3
+def multiplicarlista(minha_lista):
+    resultado = 1
+    for x in minha_lista:
+        resultado = resultado * x
+    return resultado
+
+lista1 = [1, 2, 3, 4, 5]
+lista2 = [6, 7, 8, 9, 10]
+print(multiplicarlista(lista1))
+print(multiplicarlista(lista2))
+
+#4
+numeros = [12, 18, 26, 2, 5, 9, 20, 21, 2, 3, 0, 1, 0]
+
+valor_maximo = None
+
+for num in numeros:
+    if (valor_maximo is None or num > valor_maximo):
+        valor_maximo = num
+    
+
+print("maximo valor", valor_maximo)
+
+#5
+numeros = [12, 18, 26, 2, 5, 9, 20, 21, 2, 3, 0, 1, 0]
+
+valor_minimo = None
+
+for num in numeros:
+    if (valor_minimo is None or num < valor_minimo):
+        valor_minimo = num
+    
+
+print("valor minimo", valor_minimo)
+
+#6
+minha_lista = ["papel", "caderno", "lápis", "caneta"]
+print(len(minha_lista))
+
+#7
+def encontrar_palavra_longa(lista_de_palavras):
+    palavra_len = []
+    for n in lista_de_palavras:
+        palavra_len.append((len(n), n))
+    palavra_len.sort()
+    return palavra_len[-1][1]
+
+print(encontrar_palavra_longa(["Davi", "Tarik", "Caucaia"]))
+
+#8
+minha_lista = [2,4,4,6,8,6,10,12,14,16,18,20]
+
+resultado_lista = []
+
+for numero in minha_lista:
+    if numero not in resultado_lista:
+        resultado_lista.append(numero)
+
+print(resultado_lista)
+
+#9
+lista = [1,2,3]
+if len(lista) == 3:
+    print("lista vazia")
+else:
+    print("a lista não esta vazia")
+
+#10
+lista_original = [10, 31, 45, 83]
+nova_lista = list(lista_original)
+print(lista_original)
+print(nova_lista)
