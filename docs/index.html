@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pokédex do Ninho</title>
+<meta name="description" content="Pokédex visual feita a partir do Pokemon.py: escolha o inicial, capture Pokémon e batalhe contra o Manoel Gomes.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  /* Layout: painel de instrumento — grade de fichas à esquerda, ficha aberta fixa à direita; batalha em arena de duas colunas */
+  :root {
+    --fundo: #EEF1F4;
+    --superficie: #FFFFFF;
+    --superficie-2: #F6F8FA;
+    --linha: #D9E0E7;
+    --tinta: #16202A;
+    --suave: #5E6B78;
+    --destaque: #1E3A5F;
+    --destaque-texto: #FFFFFF;
+    --ok: #1F7A4D;
+    --ruim: #B2392F;
+    --sombra: 0 1px 2px rgba(22, 32, 42, .06), 0 4px 14px rgba(22, 32, 42, .06);
+
+    --f-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+    --f-texto: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --f-num: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+    /* cores dos tipos (iguais nos dois temas) */
+    --fogo: #E4602A;
+    --grama: #3E9A48;
+    --aquatico: #2F86D6;
+    --eletrico: #E3B21B;
+    --gelo: #3BB2C4;
+    --lutador: #BE3F35;
+    --psiquico: #D24C86;
+
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --fundo: #0E141A; --superficie: #17202A; --superficie-2: #1D2732; --linha: #2B3846;
+      --tinta: #E6EDF3; --suave: #93A3B3; --destaque: #8DBBEA; --destaque-texto: #0E141A;
+      --ok: #5CC28C; --ruim: #F08277; --sombra: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.25);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --fundo: #0E141A; --superficie: #17202A; --superficie-2: #1D2732; --linha: #2B3846;
+    --tinta: #E6EDF3; --suave: #93A3B3; --destaque: #8DBBEA; --destaque-texto: #0E141A;
+    --ok: #5CC28C; --ruim: #F08277; --sombra: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--fundo);
+    color: var(--tinta);
+    font-family: var(--f-texto);
+    font-size: 15px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; color: inherit; }
+  [hidden] { display: none !important; }
+  .pagina { max-width: 1280px; margin: 0 auto; padding-inline: 20px; padding-block: 18px 28px; }
+  @media (max-width: 640px) { .pagina { padding-inline: 16px; } }
+
+  h1, h2, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance; }
+  .num { font-family: var(--f-num); font-variant-numeric: tabular-nums; }
+  .rotulo { font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--suave); font-weight: 600; }
+
+  /* ---------------------------------------------------- topo */
+  .topo { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .marca { display: flex; align-items: center; gap: 10px; }
+  .marca .lente {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #9FD3FF 0 18%, #2F86D6 45%, #1E3A5F 100%);
+    box-shadow: 0 0 0 3px var(--superficie), 0 0 0 4px var(--linha);
+  }
+  .marca h1 { font-size: 26px; font-weight: 700; letter-spacing: -.01em; }
+  .marca h1 small { font-size: 14px; font-weight: 500; color: var(--suave); margin-left: 6px; letter-spacing: 0; }
+  .topo .espaco { flex: 1; }
+  .treinador { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .progresso { display: flex; align-items: center; gap: 10px; }
+  .progresso .barra { width: 120px; height: 8px; border-radius: 99px; background: var(--linha); overflow: hidden; }
+  .progresso .barra i { display: block; height: 100%; background: var(--destaque); border-radius: inherit; transition: width .4s; }
+
+  .botao {
+    border: 1px solid var(--linha); background: var(--superficie); border-radius: 10px;
+    padding: 9px 14px; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s, transform .05s;
+  }
+  .botao:hover { border-color: var(--suave); }
+  .botao:active { transform: translateY(1px); }
+  .botao:focus-visible, .ficha:focus-visible, .chip:focus-visible, .aba:focus-visible, .escolha:focus-visible, .mini:focus-visible {
+    outline: 3px solid var(--destaque); outline-offset: 2px;
+  }
+  .botao.principal { background: var(--destaque); border-color: var(--destaque); color: var(--destaque-texto); }
+  .botao.principal:hover { filter: brightness(1.08); }
+  .botao.grande { padding: 13px 20px; font-size: 16px; }
+  .botao:disabled { opacity: .5; cursor: default; transform: none; }
+
+  /* ---------------------------------------------------- emblemas e tipos */
+  .emblema {
+    --c: var(--suave);
+    display: grid; place-items: center; border-radius: 50%;
+    background: radial-gradient(circle at 30% 28%, color-mix(in srgb, var(--c) 55%, #fff) 0%, var(--c) 62%, color-mix(in srgb, var(--c) 70%, #000) 100%);
+    color: #fff; flex: none;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,.15);
+  }
+  .emblema svg { width: 54%; height: 54%; }
+  .tipo-chip {
+    --c: var(--suave);
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 9px; border-radius: 99px; font-size: 12px; font-weight: 700;
+    background: var(--c); color: #fff; letter-spacing: .02em;
+  }
+  .t-fogo { --c: var(--fogo); } .t-grama { --c: var(--grama); } .t-aquatico { --c: var(--aquatico); }
+  .t-eletrico { --c: var(--eletrico); } .t-gelo { --c: var(--gelo); } .t-lutador { --c: var(--lutador); }
+  .t-psiquico { --c: var(--psiquico); }
+  .tipo-chip.t-eletrico, .emblema.t-eletrico { color: #3A2C00; }
+
+  /* ---------------------------------------------------- tela inicial */
+  .inicio { max-width: 760px; margin: 4vh auto 0; background: var(--superficie); border: 1px solid var(--linha); border-radius: 22px; padding: 28px; box-shadow: var(--sombra); }
+  .inicio h2 { font-size: 28px; margin-bottom: 6px; }
+  .inicio p { color: var(--suave); margin: 0 0 20px; max-width: 60ch; }
+  .campo { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; }
+  .campo input {
+    padding: 12px 14px; border-radius: 12px; border: 1px solid var(--linha); background: var(--superficie-2); font-size: 16px; max-width: 360px;
+  }
+  .campo input:focus { outline: 2px solid var(--destaque); outline-offset: 1px; }
+  .iniciais { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 8px 0 22px; }
+  .escolha {
+    display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+    padding: 18px 12px 16px; border-radius: 16px; border: 2px solid var(--linha); background: var(--superficie-2); cursor: pointer;
+    transition: border-color .15s, transform .15s;
+  }
+  .escolha:hover { transform: translateY(-2px); }
+  .escolha[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 10%, var(--superficie)); }
+  .escolha strong { font-family: var(--f-display); font-size: 18px; }
+  .escolha small { color: var(--suave); }
+  @media (max-width: 560px) {
+    .inicio { padding: 20px 16px; }
+    .iniciais { gap: 8px; }
+    .escolha { padding: 14px 6px 12px; }
+    .escolha .emblema { width: 48px !important; height: 48px !important; }
+    .escolha strong { font-size: 13.5px; }
+    .escolha small { font-size: 11px; }
+  }
+  .erro { color: var(--ruim); font-weight: 600; margin: 0 0 12px; }
+
+  /* ---------------------------------------------------- abas */
+  .abas { display: flex; gap: 6px; margin-bottom: 14px; border-bottom: 1px solid var(--linha); }
+  .aba {
+    border: 0; background: none; padding: 10px 14px; font-weight: 700; color: var(--suave); cursor: pointer;
+    border-bottom: 3px solid transparent; margin-bottom: -1px; font-family: var(--f-display); font-size: 16px;
+  }
+  .aba[aria-selected="true"] { color: var(--tinta); border-bottom-color: var(--destaque); }
+  .aba .cont { font-family: var(--f-num); font-size: 12px; background: var(--superficie-2); border: 1px solid var(--linha); padding: 1px 6px; border-radius: 99px; margin-left: 4px; }
+
+  /* ---------------------------------------------------- pokédex */
+  .dex { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; align-items: start; }
+  @media (max-width: 960px) { .dex { grid-template-columns: 1fr; } }
+  .filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .filtros input[type=search] {
+    flex: 1 1 200px; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--linha); background: var(--superficie);
+  }
+  .chip {
+    border: 1px solid var(--linha); background: var(--superficie); border-radius: 99px; padding: 5px 11px;
+    font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .chip i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); display: inline-block; }
+  .chip[aria-pressed="true"] { background: var(--tinta); color: var(--fundo); border-color: var(--tinta); }
+
+  .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+  @media (max-width: 420px) { .grade { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+  .ficha {
+    position: relative; text-align: left; cursor: pointer;
+    background: var(--superficie); border: 1px solid var(--linha); border-radius: 16px;
+    padding: 12px 12px 12px; display: flex; flex-direction: column; gap: 8px;
+    transition: transform .15s, box-shadow .15s, border-color .15s;
+  }
+  .ficha:hover { transform: translateY(-2px); box-shadow: var(--sombra); }
+  .ficha[aria-current="true"] { border-color: var(--c); box-shadow: 0 0 0 2px var(--c); }
+  .ficha .cab { display: flex; justify-content: space-between; align-items: center; }
+  .ficha .numero { font-family: var(--f-num); font-size: 12px; color: var(--suave); }
+  .ficha .selo { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+  .ficha .selo.sim { color: var(--ok); }
+  .ficha .selo.nao { color: var(--suave); }
+  .ficha .corpo { display: flex; align-items: center; gap: 10px; }
+  .ficha .nome { font-family: var(--f-display); font-weight: 700; font-size: 17px; line-height: 1.1; }
+  .ficha .base { font-size: 12px; color: var(--suave); }
+  .ficha .corpo > span:last-child { min-width: 0; }
+  @media (max-width: 420px) {
+    .ficha { padding: 10px; }
+    .ficha .corpo { gap: 8px; }
+    .ficha .corpo .emblema { width: 36px !important; height: 36px !important; }
+    .ficha .nome { font-size: 15px; overflow-wrap: anywhere; }
+    .ficha .selo { font-size: 9.5px; }
+  }
+  .ficha.fora .emblema { filter: grayscale(.85); opacity: .55; }
+  .ficha.fora .nome { color: var(--suave); }
+  .vazio-lista { color: var(--suave); padding: 30px 10px; text-align: center; grid-column: 1 / -1; }
+
+  /* ficha aberta */
+  .detalhe {
+    position: sticky; top: calc(env(safe-area-inset-top, 0px) + 14px);
+    background: var(--superficie); border: 1px solid var(--linha); border-radius: 20px; overflow: hidden; box-shadow: var(--sombra);
+  }
+  .detalhe .faixa {
+    --c: var(--suave);
+    background: linear-gradient(160deg, color-mix(in srgb, var(--c) 26%, var(--superficie)) 0%, var(--superficie) 85%);
+    padding: 18px 20px 14px; display: flex; gap: 16px; align-items: center;
+  }
+  .detalhe .faixa h2 { font-size: 26px; line-height: 1.05; }
+  .detalhe .faixa .numero { font-family: var(--f-num); color: var(--suave); font-size: 13px; }
+  .detalhe .conteudo { padding: 6px 20px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .pares { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .par { background: var(--superficie-2); border: 1px solid var(--linha); border-radius: 12px; padding: 9px 11px; min-width: 0; }
+  .par strong { display: block; font-size: 14.5px; margin-top: 2px; }
+  .status { display: flex; flex-direction: column; gap: 9px; }
+  .stat { display: grid; grid-template-columns: 74px 1fr 52px; gap: 10px; align-items: center; font-size: 13px; }
+  .stat .trilho { height: 9px; border-radius: 99px; background: var(--linha); overflow: hidden; }
+  .stat .trilho i { display: block; height: 100%; border-radius: inherit; background: var(--c, var(--destaque)); transition: width .45s cubic-bezier(.2,.8,.2,1); }
+  .stat .valor { text-align: right; font-family: var(--f-num); font-weight: 700; }
+  .forca {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    border-top: 1px dashed var(--linha); padding-top: 12px;
+  }
+  .forca .grande { font-family: var(--f-num); font-size: 26px; font-weight: 700; }
+  .forca small { color: var(--suave); }
+  .acoes-detalhe { display: flex; gap: 8px; flex-wrap: wrap; }
+  .acoes-detalhe .botao { flex: 1 1 140px; }
+
+  /* ---------------------------------------------------- batalha */
+  .batalha { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
+  @media (max-width: 960px) { .batalha { grid-template-columns: 1fr; } }
+  .painel { background: var(--superficie); border: 1px solid var(--linha); border-radius: 20px; padding: 18px; }
+  .painel h3 { font-size: 18px; margin-bottom: 10px; }
+  .time { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .mini {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 99px;
+    border: 2px solid var(--linha); background: var(--superficie-2); cursor: pointer; font-weight: 600;
+  }
+  .mini[aria-pressed="true"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 12%, var(--superficie)); }
+  .arena { display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: stretch; margin-bottom: 16px; }
+  @media (max-width: 560px) { .arena { grid-template-columns: 1fr; } .arena .vs { justify-self: center; } }
+  .lutador {
+    --c: var(--suave);
+    border-radius: 16px; padding: 16px; border: 1px solid var(--linha);
+    background: linear-gradient(170deg, color-mix(in srgb, var(--c) 16%, var(--superficie)), var(--superficie) 80%);
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; min-width: 0;
+    transition: box-shadow .3s, opacity .3s;
+  }
+  .lutador.venceu { box-shadow: 0 0 0 3px var(--ok); }
+  .lutador.perdeu { opacity: .6; }
+  .lutador .dono { font-size: 12px; color: var(--suave); }
+  .lutador .nome { font-family: var(--f-display); font-size: 20px; font-weight: 700; }
+  .lutador .golpe { font-size: 13px; color: var(--suave); }
+  .lutador .conta { font-family: var(--f-num); font-size: 13px; margin-top: 4px; }
+  .lutador .total { font-family: var(--f-num); font-size: 30px; font-weight: 700; line-height: 1.1; }
+  .lutador.espera .emblema { filter: grayscale(1); opacity: .35; }
+  .vs { align-self: center; font-family: var(--f-display); font-weight: 700; font-size: 22px; color: var(--suave); }
+  .resultado { text-align: center; font-family: var(--f-display); font-size: 20px; font-weight: 700; min-height: 28px; margin-bottom: 12px; }
+  .resultado.vitoria { color: var(--ok); }
+  .resultado.derrota { color: var(--ruim); }
+  .placar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .placar div { background: var(--superficie-2); border: 1px solid var(--linha); border-radius: 12px; padding: 8px 10px; text-align: center; }
+  .placar strong { display: block; font-family: var(--f-num); font-size: 22px; }
+  .historico { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 360px; overflow-y: auto; }
+  .historico li { font-size: 13px; padding: 8px 10px; border-radius: 10px; background: var(--superficie-2); border-left: 4px solid var(--linha); }
+  .historico li.v { border-left-color: var(--ok); }
+  .historico li.d { border-left-color: var(--ruim); }
+  .historico .vazio { border-left-color: var(--linha); color: var(--suave); }
+  .regra { color: var(--suave); font-size: 13px; margin: 12px 0 0; }
+
+  /* aviso rápido e confirmação */
+  .aviso {
+    position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); transform: translate(-50%, 20px);
+    background: var(--tinta); color: var(--fundo); padding: 11px 18px; border-radius: 12px; font-weight: 600;
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; z-index: 40; max-width: calc(100% - 32px);
+  }
+  .aviso.ativo { opacity: 1; transform: translate(-50%, 0); }
+  .fundo-modal { position: fixed; inset: 0; background: rgba(14, 20, 26, .55); display: grid; place-items: center; padding: 16px; z-index: 50; }
+  .modal { background: var(--superficie); border-radius: 18px; padding: 22px; width: min(400px, 100%); box-shadow: var(--sombra); }
+  .modal h2 { font-size: 22px; margin-bottom: 6px; }
+  .modal p { color: var(--suave); margin: 0 0 16px; }
+  .modal .botoes { display: flex; gap: 8px; }
+  .modal .botoes .botao { flex: 1; }
+
+  footer { margin-top: 26px; color: var(--suave); font-size: 12.5px; text-align: center; }
+  footer a { color: inherit; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="pagina">
+  <header class="topo">
+    <div class="marca">
+      <span class="lente" aria-hidden="true"></span>
+      <h1>Pokédex <small>do Ninho</small></h1>
+    </div>
+    <span class="espaco"></span>
+    <div class="treinador" id="info-treinador" hidden>
+      <span>Treinador <strong id="nome-treinador"></strong></span>
+      <span class="progresso" title="Pokémon capturados">
+        <span class="barra"><i id="barra-progresso" style="width:0%"></i></span>
+        <span class="num" id="texto-progresso">0/14</span>
+      </span>
+      <button class="botao" id="btn-recomecar">Recomeçar</button>
+    </div>
+  </header>
+
+  <!-- ===================================================== INÍCIO -->
+  <section class="inicio" id="tela-inicio" hidden>
+    <h2>Bem-vindo, treinador</h2>
+    <p>Diga seu nome e escolha seu Pokémon inicial. Depois você pode capturar os outros e batalhar contra o treinador Manoel Gomes.</p>
+    <label class="campo">
+      <span class="rotulo">Seu nome</span>
+      <input id="campo-nome" type="text" maxlength="24" autocomplete="off" placeholder="Ex.: Ash">
+    </label>
+    <span class="rotulo">Pokémon inicial</span>
+    <div class="iniciais" id="iniciais"></div>
+    <p class="erro" id="erro-inicio" role="alert" hidden></p>
+    <button class="botao principal grande" id="btn-comecar">Começar</button>
+  </section>
+
+  <!-- ===================================================== APP -->
+  <section id="tela-app" hidden>
+    <nav class="abas" role="tablist">
+      <button class="aba" role="tab" id="aba-dex" aria-selected="true" aria-controls="painel-dex">Pokédex</button>
+      <button class="aba" role="tab" id="aba-batalha" aria-selected="false" aria-controls="painel-batalha">Batalha <span class="cont" id="cont-batalhas">0</span></button>
+    </nav>
+
+    <div id="painel-dex" role="tabpanel" aria-labelledby="aba-dex" class="dex">
+      <div>
+        <div class="filtros">
+          <input type="search" id="busca" placeholder="Buscar por nome" aria-label="Buscar Pokémon por nome">
+          <button class="chip" id="so-capturados" aria-pressed="false">Só capturados</button>
+        </div>
+        <div class="filtros" id="filtro-tipos"></div>
+        <div class="grade" id="grade"></div>
+      </div>
+      <aside class="detalhe" id="detalhe" aria-live="polite"></aside>
+    </div>
+
+    <div id="painel-batalha" role="tabpanel" aria-labelledby="aba-batalha" class="batalha" hidden>
+      <div class="painel">
+        <h3>Escolha seu Pokémon</h3>
+        <div class="time" id="time"></div>
+        <div class="arena">
+          <div class="lutador espera" id="lutador-1"></div>
+          <div class="vs">VS</div>
+          <div class="lutador espera" id="lutador-2"></div>
+        </div>
+        <div class="resultado" id="resultado" aria-live="polite"></div>
+        <button class="botao principal grande" id="btn-batalhar" style="width:100%">Batalhar contra Manoel Gomes</button>
+        <p class="regra">Força = (ataque + defesa + HP + especial) × um multiplicador sorteado de 1 a 3. Quem tiver mais força vence. O Manoel Gomes escolhe ao acaso entre todos os 14 Pokémon.</p>
+      </div>
+      <div class="painel">
+        <h3>Placar</h3>
+        <div class="placar">
+          <div><span class="rotulo">Vitórias</span><strong id="p-v">0</strong></div>
+          <div><span class="rotulo">Derrotas</span><strong id="p-d">0</strong></div>
+          <div><span class="rotulo">Empates</span><strong id="p-e">0</strong></div>
+        </div>
+        <ul class="historico" id="historico"></ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>Feito a partir do <a href="https://github.com/Davifonteles/CATEQ---Ninho-de-Desenvolvedores/blob/main/Pokemon.py">Pokemon.py</a> do CATEQ · Ninho de Desenvolvedores</footer>
+</div>
+
+<div class="aviso" id="aviso" role="status"></div>
+
+<div class="fundo-modal" id="modal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+    <h2 id="modal-titulo">Recomeçar a jornada?</h2>
+    <p>Seu time, o placar e o histórico de batalhas serão apagados.</p>
+    <div class="botoes">
+      <button class="botao" id="modal-nao">Cancelar</button>
+      <button class="botao principal" id="modal-sim">Recomeçar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   Dados — os mesmos do Pokemon.py
+   ===================================================================== */
+
+// Cada tipo corresponde a uma subclasse (Fogo, Grama, Aquatico...) e define o movimento.
+const TIPOS = {
+  fogo:     { nome: "Fogo",     movimento: "Lança chamas" },
+  grama:    { nome: "Grama",    movimento: "Chicote de cipó" },
+  aquatico: { nome: "Aquático", movimento: "Jato de água" },
+  eletrico: { nome: "Elétrico", movimento: "Carga selvagem" },
+  gelo:     { nome: "Gelo",     movimento: "Queda de gelo" },
+  lutador:  { nome: "Lutador",  movimento: "Corpo a corpo", golpeEspecial: "Soco dos Céus" },
+  psiquico: { nome: "Psíquico", movimento: "Presas psíquicas" },
+};
+
+// pokemonsDisponiveis — (nome, espécie, tipo, ataque, defesa, hp, especial)
+const POKEMONS = [
+  ["Charmander", "fogo", 250, 100, 150, 600],
+  ["Charmeleon", "fogo", 350, 300, 350, 1000],
+  ["Bulbasauro", "grama", 200, 100, 150, 500],
+  ["Ivysauro", "grama", 350, 150, 350, 800],
+  ["Wartortle", "aquatico", 300, 100, 150, 450],
+  ["Marill", "aquatico", 300, 150, 100, 600],
+  ["Pikachu", "eletrico", 300, 100, 200, 1000],
+  ["Raichu", "eletrico", 450, 200, 400, 2000],
+  ["Vulpix", "gelo", 350, 200, 300, 500],
+  ["Glaceon", "gelo", 300, 300, 400, 2000],
+  ["Machop", "lutador", 150, 100, 200, 1000],
+  ["Machamp", "lutador", 300, 250, 300, 2000],
+  ["Abra", "psiquico", 200, 150, 300, 500],
+  ["Alakazam", "psiquico", 350, 250, 400, 1500],
+].map(([nome, tipo, ataque, defesa, hp, especial], i) => ({
+  id: i + 1, nome, especie: nome, tipo, ataque, defesa, hp, especial,
+  movimento: TIPOS[tipo].movimento,
+  golpeEspecial: TIPOS[tipo].golpeEspecial || null,
+  base: ataque + defesa + hp + especial,
+}));
+
+const MAXIMOS = {
+  ataque: Math.max(...POKEMONS.map(p => p.ataque)),
+  defesa: Math.max(...POKEMONS.map(p => p.defesa)),
+  hp: Math.max(...POKEMONS.map(p => p.hp)),
+  especial: Math.max(...POKEMONS.map(p => p.especial)),
+};
+const INICIAIS = POKEMONS.slice(0, 3); // o Pokemon.py oferece os 3 primeiros da lista
+const INIMIGO = "Manoel Gomes";
+
+/* ícones dos tipos (desenhos simples, sem personagens) */
+const ICONES = {
+  fogo: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.2 2c.7 3.6 4.8 5.6 4.8 10.6a5 5 0 0 1-10 .2c0-2.4 1.2-4 2.5-5 .1 1.8.8 3 2.1 3.5-.6-2.8-.2-6.3.6-9.3z"/></svg>',
+  grama: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.5 4.5C9 4.5 4.5 9.5 4.5 15.5c0 2.2 1.5 4 4 4 6.5 0 11-6 11-15z" fill="currentColor" fill-opacity=".9"/><path d="M4 20.5 13.5 11" stroke="rgba(0,0,0,.28)"/></svg>',
+  aquatico: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5C9 7 5.8 10.4 5.8 14.2a6.2 6.2 0 0 0 12.4 0C18.2 10.4 15 7 12 2.5z"/></svg>',
+  eletrico: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13.5 2 4.5 13.5h6.2L9.8 22l9.7-12.2h-6.4z"/></svg>',
+  gelo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 2.5v19M3.8 7.2l16.4 9.6M3.8 16.8l16.4-9.6"/><path d="m9.5 4 2.5 2.5L14.5 4M9.5 20l2.5-2.5 2.5 2.5"/></svg>',
+  lutador: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6.5 9.2a2 2 0 0 1 3.4-1.4 2 2 0 0 1 3.6-.7 2 2 0 0 1 3.6.4 2 2 0 0 1 2.4 2v4.8A6.7 6.7 0 0 1 12.8 21h-1.6a5.2 5.2 0 0 1-5-3.9l-1.1-4.4A2 2 0 0 1 6.5 10z"/></svg>',
+  psiquico: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M2 12s3.7-6.6 10-6.6S22 12 22 12s-3.7 6.6-10 6.6S2 12 2 12z"/><circle cx="12" cy="12" r="3.2" fill="currentColor"/></svg>',
+};
+
+/* =====================================================================
+   Estado do treinador (Jogador do Pokemon.py)
+   ===================================================================== */
+const CHAVE = "pokedex-ninho";
+let estado = carregar() || novoEstado();
+let selecionado = 1;
+let filtroTipo = null;
+let soCapturados = false;
+let lutadorEscolhido = null;
+
+function novoEstado() {
+  return { treinador: "", time: [], placar: { v: 0, d: 0, e: 0 }, historico: [] };
+}
+function carregar() {
+  try {
+    const e = JSON.parse(localStorage.getItem(CHAVE));
+    if (e && Array.isArray(e.time) && e.placar && Array.isArray(e.historico)) return e;
+  } catch (err) { /* sem armazenamento */ }
+  return null;
+}
+function salvar() {
+  try { localStorage.setItem(CHAVE, JSON.stringify(estado)); } catch (err) { /* ignora */ }
+}
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = n => n.toLocaleString("pt-BR");
+const pad = n => "#" + String(n).padStart(3, "0");
+const porId = id => POKEMONS.find(p => p.id === id);
+const capturado = id => estado.time.includes(id);
+const emblema = (p, tam) => `<span class="emblema t-${p.tipo}" style="width:${tam}px;height:${tam}px">${ICONES[p.tipo]}</span>`;
+const chipTipo = t => `<span class="tipo-chip t-${t}">${TIPOS[t].nome}</span>`;
+
+function avisar(texto) {
+  const a = $("#aviso");
+  a.textContent = texto;
+  a.classList.add("ativo");
+  clearTimeout(avisar.t);
+  avisar.t = setTimeout(() => a.classList.remove("ativo"), 2200);
+}
+
+/* =====================================================================
+   Tela inicial: nome + Pokémon inicial
+   ===================================================================== */
+let inicialEscolhido = null;
+
+function renderInicio() {
+  $("#iniciais").innerHTML = INICIAIS.map(p => `
+    <button class="escolha t-${p.tipo}" data-id="${p.id}" aria-pressed="${inicialEscolhido === p.id}">
+      ${emblema(p, 64)}
+      <strong>${p.nome}</strong>
+      ${chipTipo(p.tipo)}
+      <small>Força base <span class="num">${fmt(p.base)}</span></small>
+    </button>`).join("");
+}
+$("#iniciais").addEventListener("click", e => {
+  const b = e.target.closest(".escolha");
+  if (!b) return;
+  inicialEscolhido = +b.dataset.id;
+  renderInicio();
+  $("#iniciais").querySelector(`[data-id="${inicialEscolhido}"]`).focus();
+});
+$("#btn-comecar").addEventListener("click", () => {
+  const nome = $("#campo-nome").value.trim();
+  const erro = $("#erro-inicio");
+  if (!nome) { erro.textContent = "Digite seu nome para começar."; erro.hidden = false; $("#campo-nome").focus(); return; }
+  if (!inicialEscolhido) { erro.textContent = "Escolha um dos três Pokémon iniciais."; erro.hidden = false; return; }
+  erro.hidden = true;
+  estado = novoEstado();
+  estado.treinador = nome;
+  estado.time = [inicialEscolhido];
+  selecionado = inicialEscolhido;
+  lutadorEscolhido = inicialEscolhido;
+  salvar();
+  mostrar();
+  avisar(`O Pokémon escolhido foi o ${porId(inicialEscolhido).nome}!`);
+});
+$("#campo-nome").addEventListener("keydown", e => { if (e.key === "Enter") $("#btn-comecar").click(); });
+
+/* =====================================================================
+   Pokédex: grade + ficha aberta
+   ===================================================================== */
+function renderFiltros() {
+  $("#filtro-tipos").innerHTML =
+    `<button class="chip" data-tipo="" aria-pressed="${filtroTipo === null}">Todos</button>` +
+    Object.entries(TIPOS).map(([k, t]) =>
+      `<button class="chip t-${k}" data-tipo="${k}" aria-pressed="${filtroTipo === k}"><i></i>${t.nome}</button>`).join("");
+  $("#so-capturados").setAttribute("aria-pressed", soCapturados);
+}
+$("#filtro-tipos").addEventListener("click", e => {
+  const b = e.target.closest(".chip");
+  if (!b) return;
+  filtroTipo = b.dataset.tipo || null;
+  renderFiltros();
+  renderGrade();
+});
+$("#so-capturados").addEventListener("click", () => { soCapturados = !soCapturados; renderFiltros(); renderGrade(); });
+$("#busca").addEventListener("input", renderGrade);
+
+function renderGrade() {
+  const termo = $("#busca").value.trim().toLowerCase();
+  const lista = POKEMONS.filter(p =>
+    (!filtroTipo || p.tipo === filtroTipo) &&
+    (!soCapturados || capturado(p.id)) &&
+    (!termo || p.nome.toLowerCase().includes(termo)));
+  $("#grade").innerHTML = lista.length ? lista.map(p => {
+    const tem = capturado(p.id);
+    return `<button class="ficha t-${p.tipo}${tem ? "" : " fora"}" data-id="${p.id}" aria-current="${p.id === selecionado}"
+              aria-label="${p.nome}, ${TIPOS[p.tipo].nome}, ${tem ? "capturado" : "não capturado"}">
+      <span class="cab"><span class="numero">${pad(p.id)}</span>
+        <span class="selo ${tem ? "sim" : "nao"}">${tem ? "✓ capturado" : "livre"}</span></span>
+      <span class="corpo">${emblema(p, 46)}
+        <span><span class="nome">${p.nome}</span><br>${chipTipo(p.tipo)}</span></span>
+      <span class="base">Força base <span class="num">${fmt(p.base)}</span></span>
+    </button>`;
+  }).join("") : `<p class="vazio-lista">Nenhum Pokémon encontrado com esses filtros.</p>`;
+}
+$("#grade").addEventListener("click", e => {
+  const b = e.target.closest(".ficha");
+  if (!b) return;
+  selecionado = +b.dataset.id;
+  renderGrade();
+  renderDetalhe();
+  if (window.innerWidth <= 960) $("#detalhe").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+function barra(rotulo, valor, max, tipo) {
+  return `<div class="stat t-${tipo}"><span>${rotulo}</span>
+    <span class="trilho"><i style="width:${Math.round(valor / max * 100)}%"></i></span>
+    <span class="valor">${fmt(valor)}</span></div>`;
+}
+
+function renderDetalhe() {
+  const p = porId(selecionado);
+  const tem = capturado(p.id);
+  $("#detalhe").innerHTML = `
+    <div class="faixa t-${p.tipo}">
+      ${emblema(p, 84)}
+      <div>
+        <div class="numero">${pad(p.id)}</div>
+        <h2>${p.nome}</h2>
+        <div style="margin-top:6px">${chipTipo(p.tipo)}</div>
+      </div>
+    </div>
+    <div class="conteudo">
+      <div class="pares">
+        <div class="par"><span class="rotulo">Espécie</span><strong>${p.especie}</strong></div>
+        <div class="par"><span class="rotulo">Movimento</span><strong>${p.movimento}</strong></div>
+        ${p.golpeEspecial ? `<div class="par" style="grid-column:1/-1"><span class="rotulo">Golpe especial</span><strong>${p.golpeEspecial}</strong></div>` : ""}
+      </div>
+      <div class="status">
+        ${barra("Ataque", p.ataque, MAXIMOS.ataque, p.tipo)}
+        ${barra("Defesa", p.defesa, MAXIMOS.defesa, p.tipo)}
+        ${barra("HP", p.hp, MAXIMOS.hp, p.tipo)}
+        ${barra("Especial", p.especial, MAXIMOS.especial, p.tipo)}
+      </div>
+      <div class="forca">
+        <div><span class="rotulo">Força base</span><div class="grande">${fmt(p.base)}</div></div>
+        <small>Na batalha: <span class="num">${fmt(p.base)}</span> a <span class="num">${fmt(p.base * 3)}</span></small>
+      </div>
+      <div class="acoes-detalhe">
+        ${tem
+          ? `<button class="botao" disabled>✓ No seu time</button>
+             <button class="botao principal" id="btn-usar">Usar na batalha</button>`
+          : `<button class="botao principal" id="btn-capturar">Capturar ${p.nome}</button>`}
+      </div>
+    </div>`;
+  const cap = $("#btn-capturar");
+  if (cap) cap.addEventListener("click", () => capturar(p.id));
+  const usar = $("#btn-usar");
+  if (usar) usar.addEventListener("click", () => { lutadorEscolhido = p.id; abrirAba("batalha"); });
+}
+
+// Jogador.capturarPokemon
+function capturar(id) {
+  if (capturado(id)) return;
+  estado.time.push(id);
+  salvar();
+  avisar(`Você capturou o ${porId(id).nome}!`);
+  renderTopo();
+  renderGrade();
+  renderDetalhe();
+  renderTime();
+}
+
+/* =====================================================================
+   Batalha (batalhaPokemon do Pokemon.py)
+   ===================================================================== */
+const sortear = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+
+function renderTime() {
+  if (!estado.time.includes(lutadorEscolhido)) lutadorEscolhido = estado.time[0] ?? null;
+  $("#time").innerHTML = estado.time.map(id => {
+    const p = porId(id);
+    return `<button class="mini t-${p.tipo}" data-id="${id}" aria-pressed="${id === lutadorEscolhido}">${emblema(p, 30)}${p.nome}</button>`;
+  }).join("");
+  $("#cont-batalhas").textContent = estado.placar.v + estado.placar.d + estado.placar.e;
+}
+$("#time").addEventListener("click", e => {
+  const b = e.target.closest(".mini");
+  if (!b) return;
+  lutadorEscolhido = +b.dataset.id;
+  renderTime();
+  mostrarLutador("#lutador-1", porId(lutadorEscolhido), estado.treinador);
+  mostrarLutador("#lutador-2", null, INIMIGO);
+  $("#resultado").textContent = "";
+  $("#resultado").className = "resultado";
+});
+
+function mostrarLutador(sel, p, dono, conta) {
+  const el = $(sel);
+  el.className = "lutador" + (p ? ` t-${p.tipo}` : " espera");
+  if (!p) {
+    el.innerHTML = `<span class="emblema" style="width:76px;height:76px;background:var(--linha)"></span>
+      <span class="dono">${esc(dono)}</span><span class="nome">?</span>
+      <span class="golpe">Escolhe na hora da batalha</span>`;
+    return;
+  }
+  el.innerHTML = `${emblema(p, 76)}
+    <span class="dono">${esc(dono)}</span>
+    <span class="nome">${p.nome}</span>
+    <span class="golpe">${p.movimento} · especial ${p.golpeEspecial ? p.golpeEspecial + " " : ""}${fmt(p.especial)}</span>
+    ${conta ? `<span class="conta">${fmt(p.base)} × ${conta.mult}</span><span class="total" data-alvo="${conta.forca}">0</span>`
+            : `<span class="conta">Força base ${fmt(p.base)}</span>`}`;
+}
+
+function contar(el, alvo, ms) {
+  return new Promise(res => {
+    const inicio = performance.now();
+    const passo = agora => {
+      const t = Math.min(1, (agora - inicio) / ms);
+      el.textContent = fmt(Math.round(alvo * (1 - Math.pow(1 - t, 3))));
+      if (t < 1) requestAnimationFrame(passo); else res();
+    };
+    requestAnimationFrame(passo);
+  });
+}
+
+let batalhando = false;
+$("#btn-batalhar").addEventListener("click", async () => {
+  if (batalhando || !lutadorEscolhido) return;
+  batalhando = true;
+  $("#btn-batalhar").disabled = true;
+
+  const p1 = porId(lutadorEscolhido);
+  const p2 = POKEMONS[Math.floor(Math.random() * POKEMONS.length)]; // Inimigo.escolherPokemon (random.choice)
+  const m1 = sortear(1, 3), m2 = sortear(1, 3);
+  const f1 = p1.base * m1, f2 = p2.base * m2;
+
+  mostrarLutador("#lutador-1", p1, estado.treinador, { mult: m1, forca: f1 });
+  mostrarLutador("#lutador-2", p2, INIMIGO, { mult: m2, forca: f2 });
+  $("#resultado").textContent = "";
+  $("#resultado").className = "resultado";
+
+  await Promise.all([
+    contar($("#lutador-1 .total"), f1, 900),
+    contar($("#lutador-2 .total"), f2, 900),
+  ]);
+
+  let texto, classe, item;
+  if (f1 > f2) {
+    estado.placar.v++; classe = "vitoria"; item = "v";
+    texto = `O vencedor foi ${p1.nome} com força ${fmt(f1)}, do treinador ${estado.treinador}!`;
+    $("#lutador-1").classList.add("venceu"); $("#lutador-2").classList.add("perdeu");
+  } else if (f1 < f2) {
+    estado.placar.d++; classe = "derrota"; item = "d";
+    texto = `O vencedor foi ${p2.nome} com força ${fmt(f2)}, do treinador ${INIMIGO}.`;
+    $("#lutador-2").classList.add("venceu"); $("#lutador-1").classList.add("perdeu");
+  } else {
+    estado.placar.e++; classe = ""; item = "e";
+    texto = "Deu empate!";
+  }
+  $("#resultado").textContent = texto;
+  $("#resultado").className = "resultado " + classe;
+
+  estado.historico.unshift({ r: item, p1: p1.nome, p2: p2.nome, f1, f2, m1, m2 });
+  estado.historico = estado.historico.slice(0, 30);
+  salvar();
+  renderPlacar();
+  renderTime();
+
+  batalhando = false;
+  $("#btn-batalhar").disabled = false;
+});
+
+function renderPlacar() {
+  $("#p-v").textContent = estado.placar.v;
+  $("#p-d").textContent = estado.placar.d;
+  $("#p-e").textContent = estado.placar.e;
+  $("#historico").innerHTML = estado.historico.length
+    ? estado.historico.map(h => `<li class="${h.r}">
+        <strong>${h.r === "v" ? "Vitória" : h.r === "d" ? "Derrota" : "Empate"}</strong> ·
+        ${h.p1} <span class="num">${fmt(h.f1)}</span> × <span class="num">${fmt(h.f2)}</span> ${h.p2}</li>`).join("")
+    : `<li class="vazio">Nenhuma batalha ainda. Escolha um Pokémon e desafie o ${INIMIGO}.</li>`;
+}
+
+/* =====================================================================
+   Navegação
+   ===================================================================== */
+function abrirAba(qual) {
+  const dex = qual === "dex";
+  $("#aba-dex").setAttribute("aria-selected", dex);
+  $("#aba-batalha").setAttribute("aria-selected", !dex);
+  $("#painel-dex").hidden = !dex;
+  $("#painel-batalha").hidden = dex;
+  if (!dex) {
+    renderTime();
+    mostrarLutador("#lutador-1", lutadorEscolhido ? porId(lutadorEscolhido) : null, estado.treinador);
+    mostrarLutador("#lutador-2", null, INIMIGO);
+    $("#resultado").textContent = "";
+    $("#resultado").className = "resultado";
+    renderPlacar();
+  }
+}
+$("#aba-dex").addEventListener("click", () => abrirAba("dex"));
+$("#aba-batalha").addEventListener("click", () => abrirAba("batalha"));
+
+function renderTopo() {
+  $("#nome-treinador").textContent = estado.treinador;
+  const n = estado.time.length;
+  $("#barra-progresso").style.width = (n / POKEMONS.length * 100) + "%";
+  $("#texto-progresso").textContent = `${n}/${POKEMONS.length}`;
+}
+
+function mostrar() {
+  const comecou = !!estado.treinador && estado.time.length > 0;
+  $("#tela-inicio").hidden = comecou;
+  $("#tela-app").hidden = !comecou;
+  $("#info-treinador").hidden = !comecou;
+  if (!comecou) {
+    renderInicio();
+    return;
+  }
+  if (!lutadorEscolhido) lutadorEscolhido = estado.time[0];
+  renderTopo();
+  renderFiltros();
+  renderGrade();
+  renderDetalhe();
+  abrirAba("dex");
+}
+
+$("#btn-recomecar").addEventListener("click", () => { $("#modal").hidden = false; $("#modal-nao").focus(); });
+$("#modal-nao").addEventListener("click", () => { $("#modal").hidden = true; });
+$("#modal-sim").addEventListener("click", () => {
+  $("#modal").hidden = true;
+  estado = novoEstado();
+  inicialEscolhido = null;
+  lutadorEscolhido = null;
+  selecionado = 1;
+  salvar();
+  $("#campo-nome").value = "";
+  mostrar();
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("#modal").hidden = true; });
+
+mostrar();
+</script>
+</body>
+</html>
