@@ -161,8 +161,7 @@
   .aba .cont { font-family: var(--f-num); font-size: 12px; background: var(--superficie-2); border: 1px solid var(--linha); padding: 1px 6px; border-radius: 99px; margin-left: 4px; }
 
   /* ---------------------------------------------------- pokédex */
-  .dex { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 18px; align-items: start; }
-  @media (max-width: 960px) { .dex { grid-template-columns: 1fr; } }
+  .dex { display: block; }
   .filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
   .filtros input[type=search] {
     flex: 1 1 200px; min-width: 0; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--linha); background: var(--superficie);
@@ -174,8 +173,56 @@
   .chip i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); display: inline-block; }
   .chip[aria-pressed="true"] { background: var(--tinta); color: var(--fundo); border-color: var(--tinta); }
 
-  .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
-  @media (max-width: 420px) { .grade { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+  .grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(236px, 1fr)); gap: 16px; }
+
+  /* carta: arte em cima, dados embaixo */
+  .carta {
+    background: var(--superficie); border: 1px solid var(--linha); border-radius: 18px; overflow: hidden;
+    display: flex; flex-direction: column; transition: transform .15s, box-shadow .15s;
+  }
+  .carta:hover { transform: translateY(-3px); box-shadow: var(--sombra); }
+  .carta .arte {
+    position: relative; aspect-ratio: 4 / 3; display: grid; place-items: center; overflow: hidden;
+    background:
+      repeating-linear-gradient(135deg, rgba(255,255,255,.10) 0 10px, rgba(255,255,255,0) 10px 22px),
+      radial-gradient(circle at 50% 58%, color-mix(in srgb, var(--c) 55%, #fff) 0%, var(--c) 58%, color-mix(in srgb, var(--c) 65%, #000) 100%);
+  }
+  .carta .arte::after {
+    content: ""; position: absolute; left: 50%; bottom: 10%; width: 46%; height: 9%;
+    transform: translateX(-50%); border-radius: 50%; background: rgba(0,0,0,.22); filter: blur(4px);
+  }
+  .carta .arte .simbolo { width: 44%; aspect-ratio: 1; color: #fff; position: relative; z-index: 1;
+    filter: drop-shadow(0 6px 10px rgba(0,0,0,.25)); }
+  .carta.t-eletrico .arte .simbolo { color: #3A2C00; }
+  .carta .arte .simbolo svg { width: 100%; height: 100%; }
+  .carta .marca-num, .carta .marca-selo {
+    position: absolute; top: 10px; z-index: 2; font-size: 11.5px; font-weight: 700; padding: 3px 9px; border-radius: 99px;
+    background: rgba(255,255,255,.88); color: #16202A;
+  }
+  .carta .marca-num { left: 10px; font-family: var(--f-num); }
+  .carta .marca-selo { right: 10px; letter-spacing: .05em; text-transform: uppercase; }
+  .carta .marca-selo.sim { background: #1F7A4D; color: #fff; }
+  .carta.fora .arte { filter: grayscale(.75) brightness(.95); }
+  .carta .info { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+  .carta .titulo { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .carta .titulo h3 { font-size: 21px; line-height: 1.1; }
+  .carta .golpes { font-size: 13px; color: var(--suave); display: flex; flex-direction: column; gap: 2px; }
+  .carta .golpes b { color: var(--tinta); font-weight: 600; }
+  .carta .dados { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .carta .dado { background: var(--superficie-2); border: 1px solid var(--linha); border-radius: 12px; padding: 8px 10px 9px; }
+  .carta .dado .v { display: block; font-family: var(--f-num); font-weight: 700; font-size: 18px; margin: 1px 0 5px; }
+  .carta .dado .trilho { display: block; height: 5px; border-radius: 99px; background: var(--linha); overflow: hidden; }
+  .carta .dado .trilho i { display: block; height: 100%; border-radius: inherit; background: var(--c); }
+  .carta .total { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap;
+    border-top: 1px dashed var(--linha); padding-top: 10px; }
+  .carta .total strong { font-family: var(--f-num); font-size: 22px; }
+  .carta .total small { color: var(--suave); font-size: 12px; }
+  .carta .acao { display: flex; gap: 8px; margin-top: auto; }
+  .carta .acao .botao { flex: 1; }
+  @media (max-width: 520px) {
+    .grade { grid-template-columns: 1fr; }
+    .carta .arte { aspect-ratio: 16 / 9; }
+  }
   .ficha {
     position: relative; text-align: left; cursor: pointer;
     background: var(--superficie); border: 1px solid var(--linha); border-radius: 16px;
@@ -346,7 +393,6 @@
         <div class="filtros" id="filtro-tipos"></div>
         <div class="grade" id="grade"></div>
       </div>
-      <aside class="detalhe" id="detalhe" aria-live="polite"></aside>
     </div>
 
     <div id="painel-batalha" role="tabpanel" aria-labelledby="aba-batalha" class="batalha" hidden>
@@ -550,6 +596,12 @@ $("#filtro-tipos").addEventListener("click", e => {
 $("#so-capturados").addEventListener("click", () => { soCapturados = !soCapturados; renderFiltros(); renderGrade(); });
 $("#busca").addEventListener("input", renderGrade);
 
+function dado(rotulo, valor, max) {
+  return `<div class="dado"><span class="rotulo">${rotulo}</span>
+    <span class="v">${fmt(valor)}</span>
+    <span class="trilho"><i style="width:${Math.round(valor / max * 100)}%"></i></span></div>`;
+}
+
 function renderGrade() {
   const termo = $("#busca").value.trim().toLowerCase();
   const lista = POKEMONS.filter(p =>
@@ -558,71 +610,44 @@ function renderGrade() {
     (!termo || p.nome.toLowerCase().includes(termo)));
   $("#grade").innerHTML = lista.length ? lista.map(p => {
     const tem = capturado(p.id);
-    return `<button class="ficha t-${p.tipo}${tem ? "" : " fora"}" data-id="${p.id}" aria-current="${p.id === selecionado}"
-              aria-label="${p.nome}, ${TIPOS[p.tipo].nome}, ${tem ? "capturado" : "não capturado"}">
-      <span class="cab"><span class="numero">${pad(p.id)}</span>
-        <span class="selo ${tem ? "sim" : "nao"}">${tem ? "✓ capturado" : "livre"}</span></span>
-      <span class="corpo">${emblema(p, 46)}
-        <span><span class="nome">${p.nome}</span><br>${chipTipo(p.tipo)}</span></span>
-      <span class="base">Força base <span class="num">${fmt(p.base)}</span></span>
-    </button>`;
+    return `<article class="carta t-${p.tipo}${tem ? "" : " fora"}" aria-label="${p.nome}">
+      <div class="arte">
+        <span class="marca-num">${pad(p.id)}</span>
+        <span class="marca-selo ${tem ? "sim" : ""}">${tem ? "✓ Capturado" : "Livre"}</span>
+        <span class="simbolo">${ICONES[p.tipo]}</span>
+      </div>
+      <div class="info">
+        <div class="titulo"><h3>${p.nome}</h3>${chipTipo(p.tipo)}</div>
+        <div class="golpes">
+          <span>Movimento: <b>${p.movimento}</b></span>
+          ${p.golpeEspecial ? `<span>Golpe especial: <b>${p.golpeEspecial}</b></span>` : ""}
+        </div>
+        <div class="dados">
+          ${dado("Dano", p.ataque, MAXIMOS.ataque)}
+          ${dado("Defesa", p.defesa, MAXIMOS.defesa)}
+          ${dado("HP", p.hp, MAXIMOS.hp)}
+          ${dado("Especial", p.especial, MAXIMOS.especial)}
+        </div>
+        <div class="total">
+          <span><span class="rotulo">Força base</span><br><strong>${fmt(p.base)}</strong></span>
+          <small>Na batalha: ${fmt(p.base)} a ${fmt(p.base * 3)}</small>
+        </div>
+        <div class="acao">
+          ${tem
+            ? `<button class="botao principal" data-acao="usar" data-id="${p.id}">Usar na batalha</button>`
+            : `<button class="botao principal" data-acao="capturar" data-id="${p.id}">Capturar</button>`}
+        </div>
+      </div>
+    </article>`;
   }).join("") : `<p class="vazio-lista">Nenhum Pokémon encontrado com esses filtros.</p>`;
 }
 $("#grade").addEventListener("click", e => {
-  const b = e.target.closest(".ficha");
+  const b = e.target.closest("button[data-acao]");
   if (!b) return;
-  selecionado = +b.dataset.id;
-  renderGrade();
-  renderDetalhe();
-  if (window.innerWidth <= 960) $("#detalhe").scrollIntoView({ behavior: "smooth", block: "start" });
+  const id = +b.dataset.id;
+  if (b.dataset.acao === "capturar") capturar(id);
+  else { lutadorEscolhido = id; abrirAba("batalha"); window.scrollTo({ top: 0, behavior: "smooth" }); }
 });
-
-function barra(rotulo, valor, max, tipo) {
-  return `<div class="stat t-${tipo}"><span>${rotulo}</span>
-    <span class="trilho"><i style="width:${Math.round(valor / max * 100)}%"></i></span>
-    <span class="valor">${fmt(valor)}</span></div>`;
-}
-
-function renderDetalhe() {
-  const p = porId(selecionado);
-  const tem = capturado(p.id);
-  $("#detalhe").innerHTML = `
-    <div class="faixa t-${p.tipo}">
-      ${emblema(p, 84)}
-      <div>
-        <div class="numero">${pad(p.id)}</div>
-        <h2>${p.nome}</h2>
-        <div style="margin-top:6px">${chipTipo(p.tipo)}</div>
-      </div>
-    </div>
-    <div class="conteudo">
-      <div class="pares">
-        <div class="par"><span class="rotulo">Espécie</span><strong>${p.especie}</strong></div>
-        <div class="par"><span class="rotulo">Movimento</span><strong>${p.movimento}</strong></div>
-        ${p.golpeEspecial ? `<div class="par" style="grid-column:1/-1"><span class="rotulo">Golpe especial</span><strong>${p.golpeEspecial}</strong></div>` : ""}
-      </div>
-      <div class="status">
-        ${barra("Ataque", p.ataque, MAXIMOS.ataque, p.tipo)}
-        ${barra("Defesa", p.defesa, MAXIMOS.defesa, p.tipo)}
-        ${barra("HP", p.hp, MAXIMOS.hp, p.tipo)}
-        ${barra("Especial", p.especial, MAXIMOS.especial, p.tipo)}
-      </div>
-      <div class="forca">
-        <div><span class="rotulo">Força base</span><div class="grande">${fmt(p.base)}</div></div>
-        <small>Na batalha: <span class="num">${fmt(p.base)}</span> a <span class="num">${fmt(p.base * 3)}</span></small>
-      </div>
-      <div class="acoes-detalhe">
-        ${tem
-          ? `<button class="botao" disabled>✓ No seu time</button>
-             <button class="botao principal" id="btn-usar">Usar na batalha</button>`
-          : `<button class="botao principal" id="btn-capturar">Capturar ${p.nome}</button>`}
-      </div>
-    </div>`;
-  const cap = $("#btn-capturar");
-  if (cap) cap.addEventListener("click", () => capturar(p.id));
-  const usar = $("#btn-usar");
-  if (usar) usar.addEventListener("click", () => { lutadorEscolhido = p.id; abrirAba("batalha"); });
-}
 
 // Jogador.capturarPokemon
 function capturar(id) {
@@ -632,7 +657,6 @@ function capturar(id) {
   avisar(`Você capturou o ${porId(id).nome}!`);
   renderTopo();
   renderGrade();
-  renderDetalhe();
   renderTime();
 }
 
@@ -788,7 +812,6 @@ function mostrar() {
   renderTopo();
   renderFiltros();
   renderGrade();
-  renderDetalhe();
   abrirAba("dex");
 }
 
